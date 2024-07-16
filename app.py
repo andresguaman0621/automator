@@ -6,6 +6,12 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
 
+from reportlab.lib.units import inch
+import textwrap
+from reportlab.lib.colors import black
+
+
+
 def load_json_file(file_path):
     encodings = ['utf-8-sig', 'utf-8', 'latin-1']
     for encoding in encodings:
@@ -58,42 +64,66 @@ def download_image(url):
     response = requests.get(url)
     return Image.open(BytesIO(response.content))
 
+
+
+
 # Función para crear un PDF con las imágenes
 def create_pdf(products, category, size):
     pdf_filename = f"{category}_{size}.pdf"
     c = canvas.Canvas(pdf_filename, pagesize=letter)
     width, height = letter
 
-    for i, product in enumerate(products):
+    # Ajustar el espacio entre filas e imágenes
+    space_between_rows = 3.5 * inch  # Espacio entre filas de imágenes
+    space_between_columns = 4 * inch  # Espacio entre columnas de imágenes
+
+    def add_product_to_page(product, x, y):
+        # Descargar y redimensionar la imagen
         image_url = product['Thumbnail Id']
         try:
             img = download_image(image_url)
             img_width, img_height = img.size
             aspect = img_height / float(img_width)
             
-            # Ajustar el tamaño de la imagen para que quepa en la página
-            display_width = width * 0.8  # 80% del ancho de la página
+            display_width = 2.0 * inch
             display_height = display_width * aspect
 
-            # Si la altura es mayor que el 80% de la altura de la página, ajustar
-            if display_height > height * 0.8:
-                display_height = height * 0.8
-                display_width = display_height / aspect
-
             # Guardar la imagen como PNG temporal
-            temp_filename = f"temp_image_{i}.png"
+            temp_filename = f"temp_image_{product['SKU']}.png"
             img.save(temp_filename, "PNG")
 
-            # Añadir la imagen al PDF
-            c.drawImage(temp_filename, (width - display_width) / 2, height - display_height - 50, width=display_width, height=display_height)
-            
-            # Añadir información del producto
-            c.setFont("Helvetica", 10)
-            c.drawString(50, 50, f"Nombre: {product['Name']}")
-            c.drawString(50, 35, f"SKU: {product['SKU']}")
-            c.drawString(50, 20, f"Precio: {product['Regular Price']}")
+            # Dibujar sombra
+            c.setFillColor(black)
+            c.rect(x - 3, y - display_height - 5, display_width, display_height, fill=1)
 
-            c.showPage()
+            # Añadir la imagen al PDF
+            #CAMBIOSSSSSSSSSSSS -4
+            c.drawImage(temp_filename, x + 2, y - display_height, width=display_width, height=display_height)
+            
+            # Dibujar contorno negro
+            c.setStrokeColor(black)
+            c.rect(x + 2, y - display_height, display_width, display_height, fill=0)
+
+            # Añadir información del producto
+            c.setFont("Helvetica", 12)
+            
+            # Extraer el nombre del producto hasta el símbolo '-'
+            product_name = product['Name'].split('-')[0].strip()
+            
+            wrapped_lines = textwrap.wrap(product_name, width=15)  # Dividir en líneas de hasta 15 caracteres
+            text_y = y - 50
+            for line in wrapped_lines:
+                c.drawString(x + 2.35 * inch, text_y, line)
+                text_y -= 14  # Espaciado entre líneas
+
+            c.drawString(x + 2.35 * inch, y - 99, f"Color {product['Attribute Pa Color']}")
+            
+            c.setFont("Helvetica-Bold", 15)  # Fuente en negrita para parte del texto
+            c.drawString(x + 2.35 * inch, y - 120, f"{product['Attribute Pa Talla']}")
+            
+            c.setFont("Helvetica", 12)  # Fuente normal para 'Disponible'
+            c.drawString(x + 2.35 * inch, y - 154, f"${product['Regular Price']}")
+            c.drawString(x + 2.35 * inch, y - 168, f"Disponible: {product['Stock']}")
 
             # Eliminar el archivo temporal
             os.remove(temp_filename)
@@ -101,9 +131,24 @@ def create_pdf(products, category, size):
         except Exception as e:
             print(f"Error al procesar la imagen de {product['Name']}: {e}")
 
+    for i, product in enumerate(products):
+        page_position = i % 6
+        if page_position == 0 and i != 0:
+            c.showPage()  # Nueva página
+
+        row = page_position // 2
+        col = page_position % 2
+
+        # Ajustar las coordenadas x e y para cada imagen
+        x = 0.5 * inch + col * space_between_columns
+        y = height - (0.5 * inch + row * space_between_rows)
+
+        add_product_to_page(product, x, y)
+
     c.save()
     print(f"PDF creado: {pdf_filename}")
     return pdf_filename
+
 
 
 
