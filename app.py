@@ -22,25 +22,14 @@ except ValueError as e:
     print(f"Error al cargar el archivo: {e}")
     exit(1)
 
-# categories = {
-#     "Camiseta Oversize": ["Camiseta", "Oversize"],
-#     "Camiseta Básica Oversize": ["Camiseta", "Básica", "Oversize"],
-#     "Jogger": ["Jogger"],
-#     "Hoodie Oversize": ["Hoodie", "Oversize"],
-#     "Hoodie Oversize con Cierre": ["Hoodie", "Oversize", "Cierre"],
-#     "Pantaloneta": ["Pantaloneta"],
-#     "Hoodie Relaxed Fit": ["Hoodie", "Relaxed", "Fit"],
-#     "Hoodie Básico Oversize": ["Hoodie", "Básico", "Oversize"]
-# }
-
 
 categories = {
     "Camiseta Oversize": ["Camiseta"],
     "Jogger": ["Jogger"],
-    "Hoodie Oversize": ["Hoodie", "Oversize"],
-    "Hoodie Oversize con Cierre": ["Hoodie", "Oversize", "Cierre"],
+    "Hoodie Oversize": ["Hoodie", "Oversize Fit"],
+    "Hoodie Oversize con Cierre": ["Hoodie Oversize", "con Cierre"],
     "Pantaloneta": ["Pantaloneta"],
-    "Hoodie Relaxed Fit": ["Hoodie", "Relaxed", "Fit"]
+    "Hoodie Relaxed Fit": ["Hoodie", "Relaxed"]
 }
 
 def categorize_product(name):
@@ -138,20 +127,6 @@ for size in available_sizes:
 
 # Pedir al usuario que elija una talla
 selected_size = input("\nElija una talla: ").upper()
-
-# # Mostrar productos que coinciden con la categoría y talla seleccionadas
-# if selected_size in classified_products[selected_category]:
-#     print(f"\nProductos en la categoría '{selected_category}' y talla '{selected_size}':")
-#     for product in classified_products[selected_category][selected_size]:
-#         print(f"\nNombre: {product['Name']}")
-#         print(f"SKU: {product['SKU']}")
-#         print(f"Color: {product['Attribute Pa Color']}")
-#         print(f"Precio: {product['Regular Price']}")
-#         print(f"Stock: {product['Stock']}")
-#         print(f"Imagen: {product['Thumbnail Id']}")
-# else:
-#     print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
-
 
 # Mostrar productos que coinciden con la categoría y talla seleccionadas
 if selected_size in classified_products[selected_category]:
