@@ -23,7 +23,7 @@ def load_json_file(file_path):
     raise ValueError(f"No se pudo decodificar el archivo con ninguna de las codificaciones: {encodings}")
 
 try:
-    data = load_json_file('C:/Users/andy_/Downloads/test.json')
+    data = load_json_file('C:/Users/andy_/Downloads/stock2.json')
 except ValueError as e:
     print(f"Error al cargar el archivo: {e}")
     exit(1)
@@ -59,73 +59,66 @@ for product in data:
 
 
 
-# Función para descargar una imagen
-def download_image(url):
+def optimize_image(img, max_size=(1300, 1300)):
+    """Optimiza la imagen reduciéndola y comprimiéndola."""
+    img.thumbnail(max_size)
+    optimized_buffer = BytesIO()
+    img.save(optimized_buffer, format='JPEG', quality=99, optimize=True)
+    optimized_buffer.seek(0)
+    return Image.open(optimized_buffer)
+
+def download_and_optimize_image(url):
     response = requests.get(url)
-    return Image.open(BytesIO(response.content))
+    img = Image.open(BytesIO(response.content))
+    return optimize_image(img)
 
-
-
-
-# Función para crear un PDF con las imágenes
 def create_pdf(products, category, size):
     pdf_filename = f"{category}_{size}.pdf"
     c = canvas.Canvas(pdf_filename, pagesize=letter)
     width, height = letter
 
-    # Ajustar el espacio entre filas e imágenes
-    space_between_rows = 3.5 * inch  # Espacio entre filas de imágenes
-    space_between_columns = 4 * inch  # Espacio entre columnas de imágenes
+    space_between_rows = 3.5 * inch
+    space_between_columns = 4 * inch
 
     def add_product_to_page(product, x, y):
-        # Descargar y redimensionar la imagen
         image_url = product['Thumbnail Id']
         try:
-            img = download_image(image_url)
+            img = download_and_optimize_image(image_url)
             img_width, img_height = img.size
             aspect = img_height / float(img_width)
             
             display_width = 2.0 * inch
             display_height = display_width * aspect
 
-            # Guardar la imagen como PNG temporal
-            temp_filename = f"temp_image_{product['SKU']}.png"
-            img.save(temp_filename, "PNG")
+            temp_filename = f"temp_image_{product['SKU']}.jpg"
+            img.save(temp_filename, "JPEG", quality=85, optimize=True)
 
-            # Dibujar sombra
             c.setFillColor(black)
             c.rect(x - 3, y - display_height - 5, display_width, display_height, fill=1)
 
-            # Añadir la imagen al PDF
-            #CAMBIOSSSSSSSSSSSS -4
             c.drawImage(temp_filename, x + 2, y - display_height, width=display_width, height=display_height)
             
-            # Dibujar contorno negro
             c.setStrokeColor(black)
             c.rect(x + 2, y - display_height, display_width, display_height, fill=0)
 
-            # Añadir información del producto
             c.setFont("Helvetica", 12)
             
-            # Extraer el nombre del producto hasta el símbolo '-'
             product_name = product['Name'].split('-')[0].strip()
             
-            wrapped_lines = textwrap.wrap(product_name, width=15)  # Dividir en líneas de hasta 15 caracteres
+            wrapped_lines = textwrap.wrap(product_name, width=15)
             text_y = y - 50
             for line in wrapped_lines:
                 c.drawString(x + 2.35 * inch, text_y, line)
-                text_y -= 14  # Espaciado entre líneas
+                text_y -= 14
 
             c.drawString(x + 2.35 * inch, y - 99, f"Color {product['Attribute Pa Color']}")
             
-            c.setFont("Helvetica-Bold", 15)  # Fuente en negrita para parte del texto
+            c.setFont("Helvetica-Bold", 15)
             c.drawString(x + 2.35 * inch, y - 120, f"{product['Attribute Pa Talla']}")
             
-            c.setFont("Helvetica", 12)  # Fuente normal para 'Disponible'
-            c.drawString(x + 2.35 * inch, y - 154, f"${product['Regular Price']}")
+            c.setFont("Helvetica", 12)
             c.drawString(x + 2.35 * inch, y - 168, f"Disponible: {product['Stock']}")
 
-            # Eliminar el archivo temporal
             os.remove(temp_filename)
 
         except Exception as e:
@@ -134,12 +127,11 @@ def create_pdf(products, category, size):
     for i, product in enumerate(products):
         page_position = i % 6
         if page_position == 0 and i != 0:
-            c.showPage()  # Nueva página
+            c.showPage()
 
         row = page_position // 2
         col = page_position % 2
 
-        # Ajustar las coordenadas x e y para cada imagen
         x = 0.5 * inch + col * space_between_columns
         y = height - (0.5 * inch + row * space_between_rows)
 
@@ -148,11 +140,6 @@ def create_pdf(products, category, size):
     c.save()
     print(f"PDF creado: {pdf_filename}")
     return pdf_filename
-
-
-
-
-
 
 
 # Mostrar categorías disponibles
@@ -190,3 +177,5 @@ if selected_size in classified_products[selected_category]:
     print(f"\nSe ha creado un PDF con las imágenes de los productos: {pdf_file}")
 else:
     print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
+
+
