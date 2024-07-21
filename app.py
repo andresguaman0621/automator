@@ -1,3 +1,4 @@
+import csv
 import json
 import requests
 from PIL import Image
@@ -5,29 +6,45 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
-
 from reportlab.lib.units import inch
 import textwrap
 from reportlab.lib.colors import black
 
+def normalize_column_name(name):
+    return name.lower().strip().replace(" ", "_")
 
+def load_file(file_path):
+    _, file_extension = os.path.splitext(file_path)
+    
+    if file_extension.lower() == '.json':
+        return load_json_file(file_path)
+    elif file_extension.lower() == '.csv':
+        return load_csv_file(file_path)
+    else:
+        raise ValueError(f"Formato de archivo no soportado: {file_extension}")
 
 def load_json_file(file_path):
     encodings = ['utf-8-sig', 'utf-8', 'latin-1']
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as file:
-                return json.load(file)
+                data = json.load(file)
+                return [{normalize_column_name(k): v for k, v in item.items()} for item in data]
         except UnicodeDecodeError:
             continue
     raise ValueError(f"No se pudo decodificar el archivo con ninguna de las codificaciones: {encodings}")
 
-try:
-    data = load_json_file('C:/Users/andy_/Downloads/stock2.json')
-except ValueError as e:
-    print(f"Error al cargar el archivo: {e}")
-    exit(1)
-
+def load_csv_file(file_path):
+    encodings = ['utf-8-sig', 'utf-8', 'latin-1']
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as file:
+                csv_reader = csv.DictReader(file)
+                normalized_fieldnames = [normalize_column_name(name) for name in csv_reader.fieldnames]
+                return [{normalize_column_name(k): v for k, v in row.items()} for row in csv_reader]
+        except UnicodeDecodeError:
+            continue
+    raise ValueError(f"No se pudo decodificar el archivo con ninguna de las codificaciones: {encodings}")
 
 categories = {
     "Camiseta Oversize": ["Camiseta"],
@@ -44,20 +61,6 @@ def categorize_product(name):
         if all(keyword.lower() in name_lower for keyword in keywords):
             return category
     return "Sin categoría"
-
-# Clasificar productos
-classified_products = {}
-for product in data:
-    if product['Stock'] != "" and product['Stock'] != "0":
-        category = categorize_product(product['Name'])
-        talla = product['Attribute Pa Talla']
-        if category not in classified_products:
-            classified_products[category] = {}
-        if talla not in classified_products[category]:
-            classified_products[category][talla] = []
-        classified_products[category][talla].append(product)
-
-
 
 def optimize_image(img, max_size=(1300, 1300)):
     """Optimiza la imagen reduciéndola y comprimiéndola."""
@@ -81,7 +84,7 @@ def create_pdf(products, category, size):
     space_between_columns = 4 * inch
 
     def add_product_to_page(product, x, y):
-        image_url = product['Thumbnail Id']
+        image_url = product.get('thumbnail_id', '')
         try:
             img = download_and_optimize_image(image_url)
             img_width, img_height = img.size
@@ -90,7 +93,7 @@ def create_pdf(products, category, size):
             display_width = 2.0 * inch
             display_height = display_width * aspect
 
-            temp_filename = f"temp_image_{product['SKU']}.jpg"
+            temp_filename = f"temp_image_{product.get('sku', '')}.jpg"
             img.save(temp_filename, "JPEG", quality=85, optimize=True)
 
             c.setFillColor(black)
@@ -103,7 +106,7 @@ def create_pdf(products, category, size):
 
             c.setFont("Helvetica", 12)
             
-            product_name = product['Name'].split('-')[0].strip()
+            product_name = product.get('name', '').split('-')[0].strip()
             
             wrapped_lines = textwrap.wrap(product_name, width=15)
             text_y = y - 50
@@ -111,18 +114,18 @@ def create_pdf(products, category, size):
                 c.drawString(x + 2.35 * inch, text_y, line)
                 text_y -= 14
 
-            c.drawString(x + 2.35 * inch, y - 99, f"Color {product['Attribute Pa Color']}")
+            c.drawString(x + 2.35 * inch, y - 99, f"Color {product.get('attribute_pa_color', '')}")
             
             c.setFont("Helvetica-Bold", 15)
-            c.drawString(x + 2.35 * inch, y - 120, f"{product['Attribute Pa Talla']}")
+            c.drawString(x + 2.35 * inch, y - 120, f"{product.get('attribute_pa_talla', '')}")
             
             c.setFont("Helvetica", 12)
-            c.drawString(x + 2.35 * inch, y - 168, f"Disponible: {product['Stock']}")
+            c.drawString(x + 2.35 * inch, y - 168, f"Disponible: {product.get('stock', '')}")
 
             os.remove(temp_filename)
 
         except Exception as e:
-            print(f"Error al procesar la imagen de {product['Name']}: {e}")
+            print(f"Error al procesar la imagen de {product.get('name', '')}: {e}")
 
     for i, product in enumerate(products):
         page_position = i % 6
@@ -141,6 +144,26 @@ def create_pdf(products, category, size):
     print(f"PDF creado: {pdf_filename}")
     return pdf_filename
 
+try:
+    # file_path = input("Ingrese la ruta del archivo (JSON o CSV): ")
+    file_path = "C:/Users/andy_/Downloads/stock2.json"
+    data = load_file(file_path)
+except ValueError as e:
+    print(f"Error al cargar el archivo: {e}")
+    exit(1)
+
+# Clasificar productos
+classified_products = {}
+for product in data:
+    stock = product.get('stock', '')
+    if stock != "" and stock != "0":
+        category = categorize_product(product.get('name', ''))
+        talla = product.get('attribute_pa_talla', '')
+        if category not in classified_products:
+            classified_products[category] = {}
+        if talla not in classified_products[category]:
+            classified_products[category][talla] = []
+        classified_products[category][talla].append(product)
 
 # Mostrar categorías disponibles
 print("Categorías disponibles:")
@@ -165,17 +188,16 @@ if selected_size in classified_products[selected_category]:
     matching_products = classified_products[selected_category][selected_size]
     print(f"\nProductos en la categoría '{selected_category}' y talla '{selected_size}':")
     for product in matching_products:
-        print(f"\nNombre: {product['Name']}")
-        print(f"SKU: {product['SKU']}")
-        print(f"Color: {product['Attribute Pa Color']}")
-        print(f"Precio: {product['Regular Price']}")
-        print(f"Stock: {product['Stock']}")
-        print(f"Imagen: {product['Thumbnail Id']}")
+        print(f"\nNombre: {product.get('name', '')}")
+        print(f"SKU: {product.get('sku', '')}")
+        print(f"Color: {product.get('attribute_pa_color', '')}")
+        print(f"Precio: {product.get('regular_price', '')}")
+        print(f"Stock: {product.get('stock', '')}")
+        print(f"Imagen: {product.get('thumbnail_id', '')}")
     
     # Crear PDF
     pdf_file = create_pdf(matching_products, selected_category, selected_size)
     print(f"\nSe ha creado un PDF con las imágenes de los productos: {pdf_file}")
 else:
     print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
-
-
+    
