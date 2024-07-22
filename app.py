@@ -9,6 +9,9 @@ import os
 from reportlab.lib.units import inch
 import textwrap
 from reportlab.lib.colors import black
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from tkinter import PhotoImage, filedialog, messagebox
 
 def normalize_column_name(name):
     return name.lower().strip().replace(" ", "_")
@@ -145,65 +148,161 @@ def create_pdf(products, category, size):
     return pdf_filename
 
 
-def main():
-    try:
-        # file_path = input("Ingrese la ruta del archivo (JSON o CSV): ")
-        file_path = "C:/Users/andy_/Downloads/stock2.csv"
+# def main():
+#     try:
+#         # file_path = input("Ingrese la ruta del archivo (JSON o CSV): ")
+#         file_path = "C:/Users/andy_/Downloads/stock2.csv"
         
-        data = load_file(file_path)
-    except ValueError as e:
-        print(f"Error al cargar el archivo: {e}")
-        exit(1)
+#         data = load_file(file_path)
+#     except ValueError as e:
+#         print(f"Error al cargar el archivo: {e}")
+#         exit(1)
 
-    # Clasificar productos
-    classified_products = {}
-    for product in data:
-        stock = product.get('stock', '')
-        if stock != "" and stock != "0":
-            category = categorize_product(product.get('name', ''))
-            talla = product.get('attribute_pa_talla', '')
-            if category not in classified_products:
-                classified_products[category] = {}
-            if talla not in classified_products[category]:
-                classified_products[category][talla] = []
-            classified_products[category][talla].append(product)
+#     # Clasificar productos
+#     classified_products = {}
+#     for product in data:
+#         stock = product.get('stock', '')
+#         if stock != "" and stock != "0":
+#             category = categorize_product(product.get('name', ''))
+#             talla = product.get('attribute_pa_talla', '')
+#             if category not in classified_products:
+#                 classified_products[category] = {}
+#             if talla not in classified_products[category]:
+#                 classified_products[category][talla] = []
+#             classified_products[category][talla].append(product)
 
-    # Mostrar categorías disponibles
-    print("Categorías disponibles:")
-    for i, category in enumerate(classified_products.keys(), 1):
-        print(f"{i}. {category}")
+#     # Mostrar categorías disponibles
+#     print("Categorías disponibles:")
+#     for i, category in enumerate(classified_products.keys(), 1):
+#         print(f"{i}. {category}")
 
-    # Pedir al usuario que elija una categoría
-    category_choice = int(input("\nElija el número de la categoría: ")) - 1
-    selected_category = list(classified_products.keys())[category_choice]
+#     # Pedir al usuario que elija una categoría
+#     category_choice = int(input("\nElija el número de la categoría: ")) - 1
+#     selected_category = list(classified_products.keys())[category_choice]
 
-    # Mostrar tallas disponibles para la categoría seleccionada
-    print(f"\nTallas disponibles para {selected_category}:")
-    available_sizes = set(classified_products[selected_category].keys())
-    for size in available_sizes:
-        print(size)
+#     # Mostrar tallas disponibles para la categoría seleccionada
+#     print(f"\nTallas disponibles para {selected_category}:")
+#     available_sizes = set(classified_products[selected_category].keys())
+#     for size in available_sizes:
+#         print(size)
 
-    # Pedir al usuario que elija múltiples tallas
-    selected_sizes = input("\nElija una o más tallas (separadas por coma): ").upper().split(',')
-    selected_sizes = [size.strip() for size in selected_sizes]
+#     # Pedir al usuario que elija múltiples tallas
+#     selected_sizes = input("\nElija una o más tallas (separadas por coma): ").upper().split(',')
+#     selected_sizes = [size.strip() for size in selected_sizes]
 
-    for selected_size in selected_sizes:
-        if selected_size in classified_products[selected_category]:
-            matching_products = classified_products[selected_category][selected_size]
-            print(f"\nProductos en la categoría '{selected_category}' y talla '{selected_size}':")
-            for product in matching_products:
-                print(f"\nNombre: {product.get('name', '')}")
-                print(f"SKU: {product.get('sku', '')}")
-                print(f"Color: {product.get('attribute_pa_color', '')}")
-                print(f"Precio: {product.get('regular_price', '')}")
-                print(f"Stock: {product.get('stock', '')}")
-                print(f"Imagen: {product.get('thumbnail_id', '')}")
+#     for selected_size in selected_sizes:
+#         if selected_size in classified_products[selected_category]:
+#             matching_products = classified_products[selected_category][selected_size]
+#             print(f"\nProductos en la categoría '{selected_category}' y talla '{selected_size}':")
+#             for product in matching_products:
+#                 print(f"\nNombre: {product.get('name', '')}")
+#                 print(f"SKU: {product.get('sku', '')}")
+#                 print(f"Color: {product.get('attribute_pa_color', '')}")
+#                 print(f"Precio: {product.get('regular_price', '')}")
+#                 print(f"Stock: {product.get('stock', '')}")
+#                 print(f"Imagen: {product.get('thumbnail_id', '')}")
             
-            # Crear PDF
-            pdf_file = create_pdf(matching_products, selected_category, selected_size)
-            print(f"\nSe ha creado un PDF con las imágenes de los productos: {pdf_file}")
-        else:
-            print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
+#             # Crear PDF
+#             pdf_file = create_pdf(matching_products, selected_category, selected_size)
+#             print(f"\nSe ha creado un PDF con las imágenes de los productos: {pdf_file}")
+#         else:
+#             print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
+
+# if __name__ == "__main__":
+#     main()
+
+
+class CatalogoApp(ttk.Window):
+    def __init__(self):
+        super().__init__(themename="sandstone")
+        self.title("Generador de Catálogo DUDS")
+        self.geometry("800x600")
+        self.data = None
+        self.classified_products = {}
+        self.selected_category = None
+        
+        
+        # Configurar el ícono para Windows
+        self.iconbitmap('C:/Users/andy_/Downloads/PROYECTO PYTHON/automator/logo.ico')
+
+        # Configurar el ícono para macOS
+        img = PhotoImage(file='C:/Users/andy_/Downloads/PROYECTO PYTHON/automator/logo.png')  # Usar PNG si no tienes .icns
+        self.iconphoto(True, img)
+        
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Frame principal
+        main_frame = ttk.Frame(self, padding="20")
+        main_frame.pack(fill=BOTH, expand=YES)
+
+        # Botón para cargar archivo
+        load_button = ttk.Button(main_frame, text="Cargar Archivo", command=self.load_file)
+        load_button.pack(pady=10)
+
+        # Combobox para seleccionar categoría
+        self.category_var = ttk.StringVar()
+        self.category_combo = ttk.Combobox(main_frame, textvariable=self.category_var, state="readonly")
+        self.category_combo.pack(pady=10)
+        self.category_combo.bind("<<ComboboxSelected>>", self.update_sizes)
+
+        # Listbox para seleccionar tallas
+        self.size_listbox = ttk.Treeview(main_frame, selectmode="extended", show="tree")
+        self.size_listbox.pack(pady=10, fill=BOTH, expand=YES)
+
+        # Botón para generar PDF
+        generate_button = ttk.Button(main_frame, text="Generar PDF", command=self.generate_pdfs)
+        generate_button.pack(pady=10)
+
+    def load_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("JSON files", "*.json")])
+        if file_path:
+            try:
+                self.data = load_file(file_path)
+                self.classify_products()
+                self.update_categories()
+                messagebox.showinfo("Éxito", "Archivo cargado correctamente")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al cargar el archivo: {str(e)}")
+
+    def classify_products(self):
+        self.classified_products = {}
+        for product in self.data:
+            stock = product.get('stock', '')
+            if stock != "" and stock != "0":
+                category = categorize_product(product.get('name', ''))
+                talla = product.get('attribute_pa_talla', '')
+                if category not in self.classified_products:
+                    self.classified_products[category] = {}
+                if talla not in self.classified_products[category]:
+                    self.classified_products[category][talla] = []
+                self.classified_products[category][talla].append(product)
+
+    def update_categories(self):
+        categories = list(self.classified_products.keys())
+        self.category_combo['values'] = categories
+        if categories:
+            self.category_combo.set(categories[0])
+            self.update_sizes()
+
+    def update_sizes(self, event=None):
+        self.selected_category = self.category_var.get()
+        sizes = list(self.classified_products[self.selected_category].keys())
+        self.size_listbox.delete(*self.size_listbox.get_children())
+        for size in sizes:
+            self.size_listbox.insert("", END, text=size)
+
+    def generate_pdfs(self):
+        selected_sizes = [self.size_listbox.item(item)["text"] for item in self.size_listbox.selection()]
+        if not selected_sizes:
+            messagebox.showwarning("Advertencia", "Por favor, seleccione al menos una talla")
+            return
+
+        for size in selected_sizes:
+            matching_products = self.classified_products[self.selected_category][size]
+            pdf_file = create_pdf(matching_products, self.selected_category, size)
+            messagebox.showinfo("Éxito", f"Se ha creado el PDF: {pdf_file}")
 
 if __name__ == "__main__":
-    main()
+    app = CatalogoApp()
+    app.mainloop()
