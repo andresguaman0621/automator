@@ -144,60 +144,66 @@ def create_pdf(products, category, size):
     print(f"PDF creado: {pdf_filename}")
     return pdf_filename
 
-try:
-    # file_path = input("Ingrese la ruta del archivo (JSON o CSV): ")
-    file_path = "C:/Users/andy_/Downloads/stock2.json"
-    data = load_file(file_path)
-except ValueError as e:
-    print(f"Error al cargar el archivo: {e}")
-    exit(1)
 
-# Clasificar productos
-classified_products = {}
-for product in data:
-    stock = product.get('stock', '')
-    if stock != "" and stock != "0":
-        category = categorize_product(product.get('name', ''))
-        talla = product.get('attribute_pa_talla', '')
-        if category not in classified_products:
-            classified_products[category] = {}
-        if talla not in classified_products[category]:
-            classified_products[category][talla] = []
-        classified_products[category][talla].append(product)
+def main():
+    try:
+        # file_path = input("Ingrese la ruta del archivo (JSON o CSV): ")
+        file_path = "C:/Users/andy_/Downloads/stock2.csv"
+        
+        data = load_file(file_path)
+    except ValueError as e:
+        print(f"Error al cargar el archivo: {e}")
+        exit(1)
 
-# Mostrar categorías disponibles
-print("Categorías disponibles:")
-for i, category in enumerate(classified_products.keys(), 1):
-    print(f"{i}. {category}")
+    # Clasificar productos
+    classified_products = {}
+    for product in data:
+        stock = product.get('stock', '')
+        if stock != "" and stock != "0":
+            category = categorize_product(product.get('name', ''))
+            talla = product.get('attribute_pa_talla', '')
+            if category not in classified_products:
+                classified_products[category] = {}
+            if talla not in classified_products[category]:
+                classified_products[category][talla] = []
+            classified_products[category][talla].append(product)
 
-# Pedir al usuario que elija una categoría
-category_choice = int(input("\nElija el número de la categoría: ")) - 1
-selected_category = list(classified_products.keys())[category_choice]
+    # Mostrar categorías disponibles
+    print("Categorías disponibles:")
+    for i, category in enumerate(classified_products.keys(), 1):
+        print(f"{i}. {category}")
 
-# Mostrar tallas disponibles para la categoría seleccionada
-print(f"\nTallas disponibles para {selected_category}:")
-available_sizes = set(classified_products[selected_category].keys())
-for size in available_sizes:
-    print(size)
+    # Pedir al usuario que elija una categoría
+    category_choice = int(input("\nElija el número de la categoría: ")) - 1
+    selected_category = list(classified_products.keys())[category_choice]
 
-# Pedir al usuario que elija una talla
-selected_size = input("\nElija una talla: ").upper()
+    # Mostrar tallas disponibles para la categoría seleccionada
+    print(f"\nTallas disponibles para {selected_category}:")
+    available_sizes = set(classified_products[selected_category].keys())
+    for size in available_sizes:
+        print(size)
 
-# Mostrar productos que coinciden con la categoría y talla seleccionadas
-if selected_size in classified_products[selected_category]:
-    matching_products = classified_products[selected_category][selected_size]
-    print(f"\nProductos en la categoría '{selected_category}' y talla '{selected_size}':")
-    for product in matching_products:
-        print(f"\nNombre: {product.get('name', '')}")
-        print(f"SKU: {product.get('sku', '')}")
-        print(f"Color: {product.get('attribute_pa_color', '')}")
-        print(f"Precio: {product.get('regular_price', '')}")
-        print(f"Stock: {product.get('stock', '')}")
-        print(f"Imagen: {product.get('thumbnail_id', '')}")
-    
-    # Crear PDF
-    pdf_file = create_pdf(matching_products, selected_category, selected_size)
-    print(f"\nSe ha creado un PDF con las imágenes de los productos: {pdf_file}")
-else:
-    print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
-    
+    # Pedir al usuario que elija múltiples tallas
+    selected_sizes = input("\nElija una o más tallas (separadas por coma): ").upper().split(',')
+    selected_sizes = [size.strip() for size in selected_sizes]
+
+    for selected_size in selected_sizes:
+        if selected_size in classified_products[selected_category]:
+            matching_products = classified_products[selected_category][selected_size]
+            print(f"\nProductos en la categoría '{selected_category}' y talla '{selected_size}':")
+            for product in matching_products:
+                print(f"\nNombre: {product.get('name', '')}")
+                print(f"SKU: {product.get('sku', '')}")
+                print(f"Color: {product.get('attribute_pa_color', '')}")
+                print(f"Precio: {product.get('regular_price', '')}")
+                print(f"Stock: {product.get('stock', '')}")
+                print(f"Imagen: {product.get('thumbnail_id', '')}")
+            
+            # Crear PDF
+            pdf_file = create_pdf(matching_products, selected_category, selected_size)
+            print(f"\nSe ha creado un PDF con las imágenes de los productos: {pdf_file}")
+        else:
+            print(f"No hay productos disponibles en la categoría '{selected_category}' y talla '{selected_size}'.")
+
+if __name__ == "__main__":
+    main()
